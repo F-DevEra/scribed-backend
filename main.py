@@ -1,11 +1,13 @@
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from typing import List
+from openai import OpenAI
 import shutil
 import os
 import uuid
 
 app = FastAPI()
+client = OpenAI()
 
 
 @app.get("/health")
@@ -20,37 +22,37 @@ def health():
 async def transcribe_audio(file: UploadFile = File(...)):
     temp_filename = f"temp_{uuid.uuid4()}_{file.filename}"
 
-    with open(temp_filename, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    try:
+        with open(temp_filename, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    file_size = os.path.getsize(temp_filename)
+        with open(temp_filename, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="gpt-4o-transcribe-diarize",
+                file=audio_file,
+                response_format="diarized_json",
+                chunking_strategy="auto"
+            )
 
-    os.remove(temp_filename)
+        segments = []
 
-    return {
-        "status": "file received",
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "file_size_bytes": file_size,
-        "segments": [
-            {
-                "speaker": "ENTITY 1",
-                "text": "Bro wallah I’m so stressed about this project."
-            },
-            {
-                "speaker": "ENTITY 2",
-                "text": "عادي لا، you still have time."
-            },
-            {
-                "speaker": "ENTITY 3",
-                "text": "بس لا تعقدها، it looks good."
-            },
-            {
-                "speaker": "ENTITY 1",
-                "text": "I know but I’m scared it won’t work."
-            }
-        ]
-    }
+        for segment in transcript.segments:
+            segments.append({
+                "speaker": segment.speaker,
+                "text": segment.text,
+                "start": segment.start,
+                "end": segment.end
+            })
+
+        return {
+            "status": "transcription complete",
+            "filename": file.filename,
+            "segments": segments
+        }
+
+    finally:
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
 
 
 class Segment(BaseModel):
