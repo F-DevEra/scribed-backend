@@ -62,36 +62,58 @@ class Segment(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     segments: List[Segment]
+    
+class LanguageMix(BaseModel):
+    english: int
+    arabic: int
+    mixed: int
 
+
+class SpeakerResult(BaseModel):
+    speaker: str
+    tone: str
+
+
+class SentimentReport(BaseModel):
+    status: str
+    summary: str
+    positive: int
+    neutral: int
+    negative: int
+    anger: int
+    happiness: int
+    core: str
+    language_mix: LanguageMix
+    speaker_results: List[SpeakerResult]
 
 @app.post("/analyze")
 def analyze_transcript(request: AnalyzeRequest):
-    return {
-        "status": "analysis complete",
-        "summary": "The conversation shows stress, reassurance, and emotional support.",
-        "positive": 60,
-        "neutral": 30,
-        "negative": 10,
-        "anger": 25,
-        "happiness": 70,
-        "core": "TRANSCENDENT",
-        "language_mix": {
-            "english": 55,
-            "arabic": 30,
-            "mixed": 15
-        },
-        "speaker_results": [
+    transcript_text = "\n".join(
+        [f"{segment.speaker}: {segment.text}" for segment in request.segments]
+    )
+
+    completion = client.chat.completions.parse(
+        model="gpt-4o-mini",
+        messages=[
             {
-                "speaker": "ENTITY 1",
-                "tone": "anxious but motivated"
+                "role": "system",
+                "content": (
+                    "You analyze conversations for a stylized emotional report app called Scribed. "
+                    "Return a structured sentiment report. "
+                    "Percentages should be integers from 0 to 100. "
+                    "positive, neutral, and negative should add up to 100. "
+                    "language_mix should estimate English, Arabic, and mixed language usage. "
+                    "core should be one dramatic one-word category such as TRANSCENDENT, STASIS, VOID, CHAOS, or SERENITY."
+                )
             },
             {
-                "speaker": "ENTITY 2",
-                "tone": "calm and supportive"
-            },
-            {
-                "speaker": "ENTITY 3",
-                "tone": "reassuring"
+                "role": "user",
+                "content": transcript_text
             }
-        ]
-    }
+        ],
+        response_format=SentimentReport,
+    )
+
+    report = completion.choices[0].message.parsed
+
+    return report.model_dump()
