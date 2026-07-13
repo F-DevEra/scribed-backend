@@ -169,19 +169,36 @@ def analyze_transcript(request: AnalyzeRequest):
         completion = client.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
-                {
+                    {
                     "role": "system",
                     "content": (
-                        "You analyze conversations for a stylized emotional "
-                        "report app called Scribed. Return a structured "
-                        "sentiment report. Percentages must be integers from "
-                        "0 to 100. Positive, neutral, and negative must add up "
-                        "to 100. Do not calculate language percentages because "
-                        "the backend calculates them separately. Core should "
-                        "be one dramatic one-word category such as "
-                        "TRANSCENDENT, STASIS, VOID, CHAOS, or SERENITY."
-                    )
-                },
+                        "You analyze conversations for a stylized emotional report app "
+                        "called Scribed. Return a structured sentiment report. "
+
+                        "Positive, neutral, negative, anger, and happiness must be integers "
+                        "from 0 to 100. Positive, neutral, and negative must add up to 100. "
+
+                        "For each speaker, analyze their conversational tone separately. "
+                        "The tone field must contain 1 to 3 precise, nuanced tone labels "
+                        "separated by commas. Examples include: joyful, playful, affectionate, "
+                        "hopeful, confident, relieved, calm, reflective, thoughtful, curious, "
+                        "reserved, serious, tired, detached, anxious, uncertain, hesitant, "
+                        "guarded, overwhelmed, frustrated, irritated, angry, sad, disappointed, "
+                        "vulnerable, or exhausted. "
+
+                        "Choose tones based on the speaker's wording, hesitation, intensity, "
+                        "emotional context, and conversational style. Do not reduce speaker "
+                        "tones to positive, neutral, negative, happiness, or anger. "
+                        "Do not give every speaker the same generic tone. "
+                        "Do not invent extreme emotions without evidence. "
+
+                        "Do not calculate language percentages because the backend calculates "
+                        "them separately. "
+
+                        "Core must be one dramatic one-word category such as TRANSCENDENT, "
+                        "STASIS, VOID, CHAOS, or SERENITY."
+                        )
+                    },
                 {
                     "role": "user",
                     "content": transcript_text
